@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="DocTwin app icon">
+  <defs>
+    <clipPath id="outer-mask">
+      <rect x="112" y="112" width="800" height="800" rx="180"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#outer-mask)">
+    <rect x="112" y="112" width="400" height="800" fill="#E2384F"/>
+    <rect x="512" y="112" width="400" height="800" fill="#2479D7"/>
+    <rect x="502" y="112" width="20" height="800" fill="#F8FAFC"/>
+
+    <g transform="translate(174 246)">
+      <rect x="0" y="0" width="310" height="512" rx="58" fill="#FFFFFF"/>
+      <rect x="56" y="72" width="170" height="20" rx="10" fill="#E2384F" opacity="0.24"/>
+      <rect x="56" y="122" width="222" height="20" rx="10" fill="#E2384F" opacity="0.2"/>
+      <rect x="56" y="172" width="198" height="20" rx="10" fill="#E2384F" opacity="0.16"/>
+      <rect x="46" y="308" width="222" height="104" rx="28" fill="#E2384F"/>
+      <text x="157" y="379" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="74" font-weight="800" fill="#FFFFFF">PDF</text>
+    </g>
+
+    <g transform="translate(572 246)">
+      <rect x="0" y="0" width="310" height="512" rx="58" fill="#FFFFFF"/>
+      <rect x="54" y="74" width="200" height="56" rx="28" fill="#2479D7" opacity="0.14"/>
+      <text x="155" y="250" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="132" font-weight="800" fill="#2479D7">MD</text>
+    </g>
+  </g>
+</svg>
