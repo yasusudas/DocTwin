@@ -96,6 +96,11 @@ enum MarkdownCLIGenerator {
             outputLock.unlock()
         }
 
+        defer {
+            stdoutPipe.fileHandleForReading.readabilityHandler = nil
+            stderrPipe.fileHandleForReading.readabilityHandler = nil
+        }
+
         try process.run()
 
         let deadline = Date().addingTimeInterval(settings.timeoutSeconds)
@@ -109,13 +114,12 @@ enum MarkdownCLIGenerator {
             if process.isRunning {
                 kill(process.processIdentifier, SIGKILL)
             }
+            process.waitUntilExit()
             throw MarkdownCLIGeneratorError.timedOut(settings.timeoutSeconds)
         }
 
         process.waitUntilExit()
         Thread.sleep(forTimeInterval: 0.05)
-        stdoutPipe.fileHandleForReading.readabilityHandler = nil
-        stderrPipe.fileHandleForReading.readabilityHandler = nil
 
         outputLock.lock()
         let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
