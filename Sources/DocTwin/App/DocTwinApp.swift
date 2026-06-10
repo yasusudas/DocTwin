@@ -27,6 +27,12 @@ struct DocTwinApp: App {
                 .keyboardShortcut("]", modifiers: [.command])
                 .disabled(!viewModel.canGoToNextPage)
             }
+
+            CommandMenu("AI生成") {
+                Button("CLI設定...") {
+                    MarkdownCLISettingsWindowController.shared.show()
+                }
+            }
         }
     }
 }

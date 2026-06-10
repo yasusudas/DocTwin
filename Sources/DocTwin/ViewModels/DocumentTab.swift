@@ -19,6 +19,7 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published private(set) var markdownSource: String = ""
     @Published private(set) var statusMessage: String?
     @Published private(set) var promptCopyMessage: String?
+    @Published private(set) var isGeneratingMarkdownWithCLI = false
 
     var onPageIndexChanged: ((String, Int) -> Void)?
 
@@ -105,6 +106,47 @@ final class DocumentTab: ObservableObject, Identifiable {
 
         promptCopyMessage = "生成プロンプトをクリップボードにコピーしました。"
         statusMessage = promptCopyMessage
+    }
+
+    func generateMarkdownWithCLI() {
+        guard !isGeneratingMarkdownWithCLI else {
+            return
+        }
+
+        let prompt = MarkdownGenerationPrompt.make(for: document, pageCount: pageCount)
+        let document = document
+
+        isGeneratingMarkdownWithCLI = true
+        promptCopyMessage = "CLIでMarkdownを生成しています。完了まで時間がかかることがあります。"
+        statusMessage = promptCopyMessage
+
+        DispatchQueue.global(qos: .userInitiated).async { [prompt, document] in
+            let result = Result {
+                try MarkdownCLIGenerator.generate(prompt: prompt, document: document)
+            }
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+
+                self.isGeneratingMarkdownWithCLI = false
+
+                switch result {
+                case .success(let generationResult):
+                    if generationResult.fileWasCreatedByCLI {
+                        self.promptCopyMessage = "CLIがMarkdownファイルを作成しました。"
+                    } else {
+                        self.promptCopyMessage = "CLIの出力をMarkdownファイルとして保存しました。"
+                    }
+                    self.statusMessage = self.promptCopyMessage
+                    self.reloadExplanation()
+                case .failure(let error):
+                    self.promptCopyMessage = error.localizedDescription
+                    self.statusMessage = error.localizedDescription
+                }
+            }
+        }
     }
 
     func previousPage() {

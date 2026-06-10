@@ -135,15 +135,43 @@ private struct MissingExplanationView: View {
             Button {
                 tab.copyMarkdownGenerationPromptToPasteboard()
             } label: {
-                Label("mdファイルを生成", systemImage: "doc.on.clipboard")
+                Label("生成プロンプトをコピー", systemImage: "doc.on.clipboard")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+
+            Button {
+                tab.generateMarkdownWithCLI()
+            } label: {
+                if tab.isGeneratingMarkdownWithCLI {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("CLIで生成中")
+                    }
+                } else {
+                    Label("CLIで生成して保存", systemImage: "terminal")
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(tab.isGeneratingMarkdownWithCLI)
+
+            Button {
+                MarkdownCLISettingsWindowController.shared.show()
+            } label: {
+                Label("AI生成設定", systemImage: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .disabled(tab.isGeneratingMarkdownWithCLI)
 
             if let promptCopyMessage = tab.promptCopyMessage {
                 Text(promptCopyMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
