@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 enum FileTypeIconKind {
+    case folder
     case pdf
     case markdown
 }
@@ -12,25 +13,47 @@ struct FileTypeIcon: View {
     var color: Color = .secondary
 
     var body: some View {
-        Image(nsImage: IconImageStore.image(for: kind))
-            .resizable()
-            .renderingMode(.template)
-            .foregroundStyle(color)
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
+        if kind == .folder {
+            Image(nsImage: IconImageStore.image(for: kind))
+                .resizable()
+                .renderingMode(.original)
+                .scaledToFit()
+                .frame(width: size, height: size * IconImageStore.folderDisplayHeightRatio)
+                .accessibilityHidden(true)
+        } else {
+            Image(nsImage: IconImageStore.image(for: kind))
+                .resizable()
+                .renderingMode(.template)
+                .foregroundStyle(color)
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+        }
     }
 }
 
 private enum IconImageStore {
     // Icons from @vscode/codicons, CC-BY-4.0. Copyright Microsoft Corporation.
+    static let folderDisplayHeightRatio: CGFloat = 414 / 512
+
     static func image(for kind: FileTypeIconKind) -> NSImage {
         switch kind {
+        case .folder:
+            return folder
         case .pdf:
             return pdf
         case .markdown:
             return markdown
         }
     }
+
+    private static let folder = loadOriginalImage(named: "FolderIcon") ?? makeTemplateImage(
+        svg: """
+        <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+          <path d="M1.5 3C0.672 3 0 3.672 0 4.5V12.5C0 13.328 0.672 14 1.5 14H14.5C15.328 14 16 13.328 16 12.5V5.5C16 4.672 15.328 4 14.5 4H8.414C8.149 4 7.895 3.895 7.707 3.707L6.793 2.793C6.512 2.512 6.13 2.354 5.732 2.354H1.5C0.672 2.354 0 3.026 0 3.854V4.5C0 3.672 0.672 3 1.5 3Z"/>
+          <path d="M0 5.25C0 4.422 0.672 3.75 1.5 3.75H14.5C15.328 3.75 16 4.422 16 5.25V12.5C16 13.328 15.328 14 14.5 14H1.5C0.672 14 0 13.328 0 12.5V5.25Z" opacity="0.72"/>
+        </svg>
+        """
+    )
 
     private static let pdf = makeTemplateImage(
         svg: """
@@ -54,6 +77,20 @@ private enum IconImageStore {
     private static func makeTemplateImage(svg: String) -> NSImage {
         let image = NSImage(data: Data(svg.utf8)) ?? NSImage(size: NSSize(width: 16, height: 16))
         image.isTemplate = true
+        return image
+    }
+
+    private static func loadOriginalImage(named name: String) -> NSImage? {
+        let resourceURL = Bundle.main.url(forResource: name, withExtension: "png")
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("Resources", isDirectory: true)
+                .appendingPathComponent("\(name).png")
+
+        guard let image = NSImage(contentsOf: resourceURL) else {
+            return nil
+        }
+
+        image.isTemplate = false
         return image
     }
 }

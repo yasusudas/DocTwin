@@ -28,12 +28,17 @@ struct ContentView: View {
         }
         .frame(minWidth: 980, minHeight: 640)
         .background(
-            KeyboardEventMonitor(
-                onLeftArrow: { viewModel.previousPage() },
-                onRightArrow: { viewModel.nextPage() },
-                onCloseTab: { handleCommandW() }
-            )
-            .frame(width: 0, height: 0)
+            ZStack {
+                KeyboardEventMonitor(
+                    onLeftArrow: { viewModel.previousPage() },
+                    onRightArrow: { viewModel.nextPage() },
+                    onCloseTab: { handleCommandW() }
+                )
+                .frame(width: 0, height: 0)
+
+                WindowRestorationDisabler()
+                    .frame(width: 0, height: 0)
+            }
         )
         .toolbar {
             ToolbarItemGroup {
@@ -44,12 +49,8 @@ struct ContentView: View {
                 }
                 .help("フォルダを選択")
 
-                Button {
-                    viewModel.rescanLibrary()
-                } label: {
-                    Label("再スキャン", systemImage: "arrow.clockwise")
-                }
-                .help("再スキャン")
+                SortMenu()
+                    .environmentObject(viewModel)
             }
         }
         .onAppear {

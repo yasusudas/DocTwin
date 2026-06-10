@@ -19,6 +19,7 @@ struct PDFKitView: NSViewRepresentable {
         pdfView.backgroundColor = .textBackgroundColor
         pdfView.minScaleFactor = 0.05
         pdfView.maxScaleFactor = 5.0
+        pdfView.clearSelection()
 
         NotificationCenter.default.addObserver(
             context.coordinator,
@@ -33,8 +34,13 @@ struct PDFKitView: NSViewRepresentable {
     func updateNSView(_ pdfView: PDFView, context: Context) {
         context.coordinator.parent = self
 
+        var didApplyProgrammaticChange = false
+
         if pdfView.document !== document {
-            pdfView.document = document
+            context.coordinator.performProgrammaticPageChange(targetPageIndex: currentPageIndex) {
+                pdfView.document = document
+            }
+            didApplyProgrammaticChange = true
             (pdfView as? ContainedPagePDFView)?.scheduleFitToContainer()
         }
 
@@ -45,16 +51,22 @@ struct PDFKitView: NSViewRepresentable {
             let page = document.page(at: currentPageIndex),
             pdfView.currentPage !== page
         else {
-            (pdfView as? ContainedPagePDFView)?.scheduleFitToContainer()
+            if !didApplyProgrammaticChange {
+                (pdfView as? ContainedPagePDFView)?.scheduleFitToContainer()
+            }
             return
         }
 
-        pdfView.go(to: page)
+        context.coordinator.performProgrammaticPageChange(targetPageIndex: currentPageIndex) {
+            pdfView.go(to: page)
+        }
         (pdfView as? ContainedPagePDFView)?.scheduleFitToContainer()
     }
 
     final class Coordinator: NSObject {
         var parent: PDFKitView
+        private var isApplyingProgrammaticPageChange = false
+        private var protectedProgrammaticPageIndex: Int?
 
         init(_ parent: PDFKitView) {
             self.parent = parent
@@ -78,8 +90,37 @@ struct PDFKitView: NSViewRepresentable {
                 return
             }
 
+            guard !isApplyingProgrammaticPageChange else {
+                return
+            }
+
+            if let protectedProgrammaticPageIndex {
+                if pageIndex == protectedProgrammaticPageIndex {
+                    self.protectedProgrammaticPageIndex = nil
+                }
+                return
+            }
+
             DispatchQueue.main.async {
                 self.parent.onPageChanged(pageIndex)
+            }
+        }
+
+        func performProgrammaticPageChange(targetPageIndex: Int, _ change: () -> Void) {
+            isApplyingProgrammaticPageChange = true
+            protectedProgrammaticPageIndex = targetPageIndex
+            change()
+
+            DispatchQueue.main.async { [weak self] in
+                self?.isApplyingProgrammaticPageChange = false
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                guard self?.protectedProgrammaticPageIndex == targetPageIndex else {
+                    return
+                }
+
+                self?.protectedProgrammaticPageIndex = nil
             }
         }
     }
@@ -90,6 +131,10 @@ private final class ContainedPagePDFView: PDFView {
     private var lastFittedBoundsSize: CGSize = .zero
     private var isFitScheduled = false
 
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+
     override func layout() {
         super.layout()
 
@@ -98,6 +143,52 @@ private final class ContainedPagePDFView: PDFView {
         }
 
         scheduleFitToContainer()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func rightMouseDragged(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func otherMouseDragged(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        clearSelection()
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        clearSelection()
+        return nil
+    }
+
+    override func clearSelection() {
+        super.clearSelection()
+        setCurrentSelection(nil, animate: false)
     }
 
     func scheduleFitToContainer() {

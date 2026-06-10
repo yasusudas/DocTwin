@@ -1,4 +1,5 @@
 import Combine
+import AppKit
 import Foundation
 import PDFKit
 import DocTwinCore
@@ -11,11 +12,15 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published var currentPageIndex: Int = 0 {
         didSet {
             refreshDisplayedMarkdownForCurrentPage()
+            onPageIndexChanged?(id, currentPageIndex)
         }
     }
 
     @Published private(set) var markdownSource: String = ""
     @Published private(set) var statusMessage: String?
+    @Published private(set) var promptCopyMessage: String?
+
+    var onPageIndexChanged: ((String, Int) -> Void)?
 
     private var pageMarkdownDocument: PageMarkdownDocument?
 
@@ -46,7 +51,11 @@ final class DocumentTab: ObservableObject, Identifiable {
         document.pdfURL.deletingLastPathComponent()
     }
 
-    init(document: ReferenceDocument) throws {
+    var hasExplanationMarkdown: Bool {
+        FileManager.default.fileExists(atPath: document.explanationURL.path)
+    }
+
+    init(document: ReferenceDocument, initialPageIndex: Int = 0) throws {
         guard let pdfDocument = PDFDocument(url: document.pdfURL), pdfDocument.pageCount > 0 else {
             throw DocumentTabError.unreadablePDF(document.pdfURL.lastPathComponent)
         }
@@ -54,12 +63,15 @@ final class DocumentTab: ObservableObject, Identifiable {
         id = document.id
         self.document = document
         self.pdfDocument = pdfDocument
+        currentPageIndex = min(max(initialPageIndex, 0), pdfDocument.pageCount - 1)
 
         reloadExplanation()
     }
 
     func reloadExplanation() {
-        guard FileManager.default.fileExists(atPath: document.explanationURL.path) else {
+        promptCopyMessage = nil
+
+        guard hasExplanationMarkdown else {
             pageMarkdownDocument = nil
             markdownSource = missingExplanationMarkdown
             statusMessage = "対応するMarkdownファイルがありません: \(document.explanationURL.lastPathComponent)"
@@ -82,6 +94,17 @@ final class DocumentTab: ObservableObject, Identifiable {
             """
             statusMessage = "Markdownを読み込めませんでした: \(document.explanationURL.lastPathComponent)"
         }
+    }
+
+    func copyMarkdownGenerationPromptToPasteboard() {
+        let prompt = MarkdownGenerationPrompt.make(for: document, pageCount: pageCount)
+        let pasteboard = NSPasteboard.general
+
+        pasteboard.clearContents()
+        pasteboard.setString(prompt, forType: .string)
+
+        promptCopyMessage = "生成プロンプトをクリップボードにコピーしました。"
+        statusMessage = promptCopyMessage
     }
 
     func previousPage() {

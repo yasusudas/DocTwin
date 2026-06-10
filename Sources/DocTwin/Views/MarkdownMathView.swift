@@ -14,7 +14,7 @@ struct MarkdownMathView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = NonTabFocusableWebView(frame: .zero, configuration: configuration)
         webView.allowsMagnification = true
         return webView
     }
@@ -34,5 +34,20 @@ struct MarkdownMathView: NSViewRepresentable {
 
     final class Coordinator {
         var lastSignature: String?
+    }
+}
+
+private final class NonTabFocusableWebView: WKWebView {
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard event.keyCode != 48 else {
+            window?.makeFirstResponder(nil)
+            return
+        }
+
+        super.keyDown(with: event)
     }
 }

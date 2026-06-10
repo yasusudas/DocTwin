@@ -4,7 +4,7 @@ set -euo pipefail
 MODE="${1:-run}"
 APP_NAME="DocTwin"
 BUNDLE_ID="com.yasusu.DocTwin"
-MIN_SYSTEM_VERSION="14.0"
+MIN_SYSTEM_VERSION="13.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -17,6 +17,8 @@ APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 APP_ICON_SOURCE="$ROOT_DIR/Resources/AppIcon.icns"
 APP_ICON_NAME="AppIcon"
+FOLDER_ICON_SOURCE="$ROOT_DIR/Resources/FolderIcon.png"
+MARKDOWN_PROMPT_SOURCE="$ROOT_DIR/Resources/PageExplanationGeneratorPrompt.md"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -37,17 +39,41 @@ if [ -f "$APP_ICON_SOURCE" ]; then
   cp "$APP_ICON_SOURCE" "$APP_RESOURCES/$APP_ICON_NAME.icns"
 fi
 
+if [ -f "$FOLDER_ICON_SOURCE" ]; then
+  cp "$FOLDER_ICON_SOURCE" "$APP_RESOURCES/FolderIcon.png"
+fi
+
+if [ -f "$MARKDOWN_PROMPT_SOURCE" ]; then
+  cp "$MARKDOWN_PROMPT_SOURCE" "$APP_RESOURCES/PageExplanationGeneratorPrompt.md"
+fi
+
+for localization_dir in "$ROOT_DIR"/Resources/*.lproj; do
+  if [ -d "$localization_dir" ]; then
+    cp -R "$localization_dir" "$APP_RESOURCES/"
+  fi
+done
+
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleAllowMixedLocalizations</key>
+  <true/>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>ja</string>
+  <key>CFBundleDisplayName</key>
+  <string>$APP_NAME</string>
   <key>CFBundleExecutable</key>
   <string>$APP_NAME</string>
   <key>CFBundleIconFile</key>
   <string>$APP_ICON_NAME</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>ja</string>
+  </array>
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
   <key>CFBundlePackageType</key>

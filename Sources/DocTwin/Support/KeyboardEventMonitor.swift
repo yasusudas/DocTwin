@@ -59,6 +59,11 @@ struct KeyboardEventMonitor: NSViewRepresentable {
                     return nil
                 }
 
+                if self.shouldSuppressTabTraversal(event: event) {
+                    self.clearKeyFocus()
+                    return nil
+                }
+
                 guard self.shouldHandlePageNavigation(event: event) else {
                     return event
                 }
@@ -92,6 +97,27 @@ struct KeyboardEventMonitor: NSViewRepresentable {
             }
 
             return event.keyCode == 123 || event.keyCode == 124
+        }
+
+        private func shouldSuppressTabTraversal(event: NSEvent) -> Bool {
+            guard NSApp.modalWindow == nil, NSApp.keyWindow?.isMainWindow == true else {
+                return false
+            }
+
+            let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+            guard event.modifierFlags.intersection(blockedModifiers).isEmpty else {
+                return false
+            }
+
+            return event.keyCode == 48
+        }
+
+        private func clearKeyFocus() {
+            guard let keyWindow = NSApp.keyWindow else {
+                return
+            }
+
+            keyWindow.makeFirstResponder(nil)
         }
 
         private func shouldHandleCloseTab(event: NSEvent) -> Bool {

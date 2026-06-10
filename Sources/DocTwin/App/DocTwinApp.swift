@@ -32,8 +32,36 @@ struct DocTwinApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidFinishRestoringWindows(_:)),
+            name: NSApplication.didFinishRestoringWindowsNotification,
+            object: NSApp
+        )
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        MenuLocalizer.shared.localizeMainMenu()
+        DispatchQueue.main.async {
+            MenuLocalizer.shared.localizeMainMenu()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            MenuLocalizer.shared.localizeMainMenu()
+        }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        MenuLocalizer.shared.localizeMainMenu()
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        true
+    }
+
+    @objc private func applicationDidFinishRestoringWindows(_ notification: Notification) {
+        NSApp.completeStateRestoration()
     }
 }

@@ -20,6 +20,10 @@ enum MarkdownHTMLRenderer {
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 processEscapes: true
               },
+              chtml: {
+                displayAlign: 'left',
+                displayIndent: '0'
+              },
               options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
             };
           </script>
@@ -95,6 +99,14 @@ enum MarkdownHTMLRenderer {
               color: var(--accent);
             }
 
+            :focus,
+            :focus-visible,
+            mjx-container:focus,
+            mjx-container:focus-visible {
+              outline: none !important;
+              box-shadow: none !important;
+            }
+
             blockquote {
               border-left: 4px solid var(--border);
               color: var(--muted);
@@ -144,10 +156,21 @@ enum MarkdownHTMLRenderer {
               max-width: 100%;
             }
 
+            .math-display {
+              margin: 0.9em 0;
+              overflow-x: auto;
+              text-align: left;
+            }
+
             mjx-container {
               overflow-x: auto;
               overflow-y: hidden;
               max-width: 100%;
+            }
+
+            mjx-container[display="true"] {
+              margin: 0.9em 0 !important;
+              text-align: left !important;
             }
           </style>
         </head>
@@ -156,6 +179,25 @@ enum MarkdownHTMLRenderer {
           <script>
             const payload = \#(payloadJSON);
             const content = document.getElementById('content');
+
+            window.addEventListener('keydown', event => {
+              if (event.key === 'Tab') {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (document.activeElement && document.activeElement.blur) {
+                  document.activeElement.blur();
+                }
+              }
+            }, true);
+
+            window.addEventListener('focusin', event => {
+              const target = event.target;
+
+              if (target && target !== document.body && target !== document.documentElement && target.blur) {
+                requestAnimationFrame(() => target.blur());
+              }
+            }, true);
 
             function escapeHTML(value) {
               return value
@@ -166,6 +208,100 @@ enum MarkdownHTMLRenderer {
                 .replaceAll("'", '&#039;');
             }
 
+            function protectLooseLatexBlocks(source, addMath) {
+              const lines = source.replace(/\r\n?/g, '\n').split('\n');
+              const output = [];
+              let index = 0;
+              let inFence = false;
+              let fenceMarker = '';
+              const matrixPattern = /\\begin\{(?:array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix)\}/;
+
+              while (index < lines.length) {
+                const line = lines[index];
+                const trimmed = line.trim();
+                const fenceMatch = trimmed.match(/^(```+|~~~+)/);
+
+                if (fenceMatch) {
+                  if (!inFence) {
+                    inFence = true;
+                    fenceMarker = fenceMatch[1][0];
+                  } else if (trimmed.startsWith(fenceMarker.repeat(3))) {
+                    inFence = false;
+                  }
+
+                  output.push(line);
+                  index += 1;
+                  continue;
+                }
+
+                if (inFence || trimmed === '') {
+                  output.push(line);
+                  index += 1;
+                  continue;
+                }
+
+                const paragraph = [];
+                while (index < lines.length && lines[index].trim() !== '') {
+                  paragraph.push(lines[index]);
+                  index += 1;
+                }
+
+                const paragraphText = paragraph.join('\n');
+                const alreadyDelimited = paragraphText.includes('$$') || paragraphText.includes('\\[');
+
+                if (!alreadyDelimited && matrixPattern.test(paragraphText)) {
+                  output.push(addMath(paragraphText, true));
+                } else {
+                  output.push(...paragraph);
+                }
+              }
+
+              return output.join('\n');
+            }
+
+            function protectDelimitedMath(source, addMath) {
+              let protectedSource = source
+                .replace(/\$\$([\s\S]*?)\$\$/g, (_, body) => addMath(body, true))
+                .replace(/\\\[([\s\S]*?)\\\]/g, (_, body) => addMath(body, true))
+                .replace(/\\\(([\s\S]*?)\\\)/g, (_, body) => addMath(body, false));
+
+              protectedSource = protectedSource.replace(/(^|[^$])\$([^$\n]+?)\$(?!\$)/g, (_, prefix, body) => {
+                return prefix + addMath(body, false);
+              });
+
+              return protectedSource;
+            }
+
+            function protectMath(source) {
+              const tokens = [];
+
+              function addMath(body, display) {
+                const token = 'DOC_TWIN_MATH_' + tokens.length + '_TOKEN';
+                tokens.push({ token, body, display });
+                return token;
+              }
+
+              const looseProtected = protectLooseLatexBlocks(source || '', addMath);
+              const protectedSource = protectDelimitedMath(looseProtected, addMath);
+
+              return { source: protectedSource, tokens };
+            }
+
+            function restoreMath(html, tokens) {
+              let restored = html;
+
+              for (const item of tokens) {
+                const escapedBody = escapeHTML(item.body.trim());
+                const replacement = item.display
+                  ? '<div class="math-display">\\[' + escapedBody + '\\]</div>'
+                  : '<span class="math-inline">\\(' + escapedBody + '\\)</span>';
+
+                restored = restored.split(item.token).join(replacement);
+              }
+
+              return restored.replace(/<p>\s*(<div class="math-display">[\s\S]*?<\/div>)\s*<\/p>/g, '$1');
+            }
+
             function renderMarkdown() {
               if (!content || content.dataset.rendered === 'true') {
                 return;
@@ -173,8 +309,10 @@ enum MarkdownHTMLRenderer {
 
               if (window.marked) {
                 marked.setOptions({ gfm: true, breaks: false });
-                const rawHTML = marked.parse(payload.source || '');
-                content.innerHTML = window.DOMPurify ? DOMPurify.sanitize(rawHTML) : rawHTML;
+                const mathProtected = protectMath(payload.source || '');
+                const rawHTML = marked.parse(mathProtected.source);
+                const restoredHTML = restoreMath(rawHTML, mathProtected.tokens);
+                content.innerHTML = window.DOMPurify ? DOMPurify.sanitize(restoredHTML) : restoredHTML;
               } else {
                 content.innerHTML = '<pre><code>' + escapeHTML(payload.source || '') + '</code></pre>';
               }

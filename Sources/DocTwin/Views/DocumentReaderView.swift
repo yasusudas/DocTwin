@@ -4,12 +4,14 @@ struct DocumentReaderView: View {
     @ObservedObject var tab: DocumentTab
 
     var body: some View {
-        HSplitView {
+        PersistentHSplitView(
+            storageKey: "DocumentReaderSplitRatio",
+            leadingMinWidth: 480,
+            trailingMinWidth: 360
+        ) {
             PDFPane(tab: tab)
-                .frame(minWidth: 480)
-
+        } trailing: {
             ExplanationPane(tab: tab)
-                .frame(minWidth: 360)
         }
     }
 }
@@ -34,7 +36,8 @@ private struct PDFPane: View {
                 } label: {
                     Image(systemName: "chevron.left")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.hoverIcon)
+                .focusable(false)
                 .disabled(!tab.canGoToPreviousPage)
                 .help("前のページ")
 
@@ -48,7 +51,8 @@ private struct PDFPane: View {
                 } label: {
                     Image(systemName: "chevron.right")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.hoverIcon)
+                .focusable(false)
                 .disabled(!tab.canGoToNextPage)
                 .help("次のページ")
             }
@@ -86,7 +90,8 @@ private struct ExplanationPane: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.hoverIcon)
+                .focusable(false)
                 .help("解説を再読み込み")
             }
             .padding(.horizontal, 12)
@@ -94,11 +99,54 @@ private struct ExplanationPane: View {
 
             Divider()
 
-            MarkdownMathView(
-                markdown: tab.markdownSource,
-                title: tab.title,
-                baseURL: tab.baseURL
-            )
+            if tab.hasExplanationMarkdown {
+                MarkdownMathView(
+                    markdown: tab.markdownSource,
+                    title: tab.title,
+                    baseURL: tab.baseURL
+                )
+            } else {
+                MissingExplanationView(tab: tab)
+            }
         }
+    }
+}
+
+private struct MissingExplanationView: View {
+    @ObservedObject var tab: DocumentTab
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "doc.badge.plus")
+                .font(.system(size: 38, weight: .regular))
+                .foregroundStyle(.tertiary)
+
+            VStack(spacing: 6) {
+                Text("対応するMarkdownファイルがありません")
+                    .font(.headline)
+
+                Text(tab.document.explanationURL.lastPathComponent)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Button {
+                tab.copyMarkdownGenerationPromptToPasteboard()
+            } label: {
+                Label("mdファイルを生成", systemImage: "doc.on.clipboard")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+
+            if let promptCopyMessage = tab.promptCopyMessage {
+                Text(promptCopyMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 }
