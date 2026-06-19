@@ -206,7 +206,7 @@ private struct CLIGenerationProgressPanel: View {
             ProgressView()
                 .progressViewStyle(.linear)
 
-            Text("CLIの種類によって正確な残り時間は取得できないため、完了までこのまま待ってください。")
+            Text("CLIの種類によって正確な残り時間は取得できないため、完了までこのままお待ちください。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
