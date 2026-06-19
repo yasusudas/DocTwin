@@ -103,7 +103,7 @@ private struct StatusBar: View {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 25)
         .frame(height: 28)
         .background(.bar)
     }
