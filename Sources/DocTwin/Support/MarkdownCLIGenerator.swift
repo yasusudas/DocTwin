@@ -35,12 +35,18 @@ enum MarkdownCLIGeneratorError: Error, LocalizedError {
 }
 
 enum MarkdownCLIGenerator {
-    static func generate(prompt: String, document: ReferenceDocument) throws -> MarkdownCLIGenerationResult {
+    static func generate(
+        prompt: String,
+        document: ReferenceDocument,
+        progress: ((String) -> Void)? = nil
+    ) throws -> MarkdownCLIGenerationResult {
         let settings = MarkdownCLISettings.current()
         let commandTemplate = settings.commandTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !commandTemplate.isEmpty else {
             throw MarkdownCLIGeneratorError.missingCommand
         }
+
+        progress?("生成プロンプトを一時ファイルへ保存しています。")
 
         let fileManager = FileManager.default
         let tempDirectory = fileManager.temporaryDirectory
@@ -76,6 +82,8 @@ enum MarkdownCLIGenerator {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
+        progress?("CLIを起動しています。")
+
         let outputLock = NSLock()
         var stdoutData = Data()
         var stderrData = Data()
@@ -102,6 +110,7 @@ enum MarkdownCLIGenerator {
         }
 
         try process.run()
+        progress?("CLIがMarkdownを生成中です。")
 
         let deadline = Date().addingTimeInterval(settings.timeoutSeconds)
         while process.isRunning && Date() < deadline {
@@ -121,6 +130,8 @@ enum MarkdownCLIGenerator {
         process.waitUntilExit()
         Thread.sleep(forTimeInterval: 0.05)
 
+        progress?("CLIの出力を確認しています。")
+
         outputLock.lock()
         let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
         let stderr = String(data: stderrData, encoding: .utf8) ?? ""
@@ -139,6 +150,7 @@ enum MarkdownCLIGenerator {
         }
 
         if markdownFileExists(outputFile) {
+            progress?("Markdownファイルとして保存しています。")
             try fileManager.copyItem(at: outputFile, to: document.explanationURL)
             return MarkdownCLIGenerationResult(fileWasCreatedByCLI: false, savedFromStandardOutput: true)
         }
@@ -148,6 +160,7 @@ enum MarkdownCLIGenerator {
             throw MarkdownCLIGeneratorError.emptyOutput(stderr)
         }
 
+        progress?("Markdownファイルとして保存しています。")
         try markdown.write(to: document.explanationURL, atomically: true, encoding: .utf8)
         return MarkdownCLIGenerationResult(fileWasCreatedByCLI: false, savedFromStandardOutput: true)
     }

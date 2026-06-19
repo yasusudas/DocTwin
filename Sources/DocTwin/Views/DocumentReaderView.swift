@@ -139,6 +139,7 @@ private struct MissingExplanationView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .disabled(tab.isGeneratingMarkdownWithCLI)
 
             Button {
                 tab.generateMarkdownWithCLI()
@@ -156,6 +157,10 @@ private struct MissingExplanationView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             .disabled(tab.isGeneratingMarkdownWithCLI)
+
+            if tab.isGeneratingMarkdownWithCLI {
+                CLIGenerationProgressPanel(tab: tab)
+            }
 
             Button {
                 MarkdownCLISettingsWindowController.shared.show()
@@ -176,5 +181,57 @@ private struct MissingExplanationView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
+    }
+}
+
+private struct CLIGenerationProgressPanel: View {
+    @ObservedObject var tab: DocumentTab
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "terminal")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(tab.cliGenerationProgressMessage ?? "CLIがMarkdownを生成中です。")
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(2)
+
+                Spacer()
+
+                elapsedTimeView
+            }
+
+            ProgressView()
+                .progressViewStyle(.linear)
+
+            Text("CLIの種類によって正確な残り時間は取得できないため、完了までこのまま待ってください。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: 380)
+        .padding(.top, 2)
+    }
+
+    private var elapsedTimeView: some View {
+        TimelineView(.periodic(from: tab.cliGenerationStartedAt ?? Date(), by: 1)) { context in
+            Text(elapsedText(at: context.date))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 62, alignment: .trailing)
+    }
+
+    private func elapsedText(at date: Date) -> String {
+        guard let startedAt = tab.cliGenerationStartedAt else {
+            return "0:00"
+        }
+
+        let elapsedSeconds = max(0, Int(date.timeIntervalSince(startedAt)))
+        return String(format: "%d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
     }
 }

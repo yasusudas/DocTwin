@@ -4,18 +4,25 @@ import SwiftUI
 
 struct LibraryBrowserView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @FocusState private var isPDFSearchFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            LibraryHeader()
+            LibraryHeader(isPDFSearchFieldFocused: $isPDFSearchFieldFocused)
                 .environmentObject(viewModel)
 
-            if let folder = viewModel.currentFolder, !folder.folders.isEmpty || !folder.documents.isEmpty {
+            if viewModel.isPDFSearchActive {
+                PDFSearchResultsView()
+                    .environmentObject(viewModel)
+                    .dismissPDFSearchFocus($isPDFSearchFieldFocused)
+            } else if let folder = viewModel.currentFolder, !folder.folders.isEmpty || !folder.documents.isEmpty {
                 DocumentGridView(folder: folder)
                     .environmentObject(viewModel)
+                    .dismissPDFSearchFocus($isPDFSearchFieldFocused)
             } else {
                 EmptyLibraryView()
                     .environmentObject(viewModel)
+                    .dismissPDFSearchFocus($isPDFSearchFieldFocused)
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -73,41 +80,218 @@ private struct DocumentGridView: View {
 
 private struct LibraryHeader: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @FocusState.Binding var isPDFSearchFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                if viewModel.canNavigateToParentFolder {
-                    Button {
-                        viewModel.showParentFolder()
-                    } label: {
-                        Image(systemName: "chevron.left")
+                Group {
+                    if viewModel.canNavigateToParentFolder {
+                        Button {
+                            viewModel.showParentFolder()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .buttonStyle(.hoverIcon)
+                        .focusable(false)
+                        .help("上の階層")
                     }
-                    .buttonStyle(.hoverIcon)
-                    .focusable(false)
-                    .help("上の階層")
+
+                    Text(viewModel.currentFolder?.name ?? viewModel.libraryTitle)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Spacer()
                 }
+                .dismissPDFSearchFocus($isPDFSearchFieldFocused)
 
-                Text(viewModel.currentFolder?.name ?? viewModel.libraryTitle)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                Spacer()
+                PDFSearchField(isFocused: $isPDFSearchFieldFocused)
+                    .environmentObject(viewModel)
+                    .frame(width: 310)
 
                 if let folder = viewModel.currentFolder {
                     Text("\(folder.folders.count + folder.documents.count)項目")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .dismissPDFSearchFocus($isPDFSearchFieldFocused)
                 }
             }
 
             BreadcrumbBar()
                 .environmentObject(viewModel)
+                .dismissPDFSearchFocus($isPDFSearchFieldFocused)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
+    }
+}
+
+private struct PDFSearchField: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+    @FocusState.Binding var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            TextField("PDF全文検索", text: $viewModel.searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($isFocused)
+
+            if !viewModel.searchQuery.isEmpty {
+                Button {
+                    viewModel.clearSearchQuery()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tertiary)
+                .focusable(false)
+                .help("検索を消去")
+            }
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 28)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .textBackgroundColor).opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.42), lineWidth: 1)
+        )
+    }
+}
+
+private struct PDFSearchResultsView: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text("検索結果")
+                    .font(.headline)
+
+                Text("\(viewModel.searchResults.count)件")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if viewModel.isSearchIndexing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .scaleEffect(0.72)
+                }
+
+                Spacer()
+
+                Text(viewModel.searchIndexStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 14)
+
+            if viewModel.searchResults.isEmpty {
+                EmptySearchResultsView()
+                    .environmentObject(viewModel)
+            } else {
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(viewModel.searchResults) { result in
+                            PDFSearchResultRow(result: result) {
+                                viewModel.openSearchResult(result)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+private struct PDFSearchResultRow: View {
+    let result: PDFSearchResult
+    let onOpen: () -> Void
+
+    var body: some View {
+        LibraryCardSurface(action: onOpen) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 24, height: 26)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(result.documentTitle)
+                            .font(.system(size: 14, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Text("p.\(result.pageNumber)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(result.snippet)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 12)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 6)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityLabel("\(result.documentTitle) \(result.pageNumber)ページ")
+        .help(result.pdfURL.path)
+    }
+}
+
+private struct EmptySearchResultsView: View {
+    @EnvironmentObject private var viewModel: AppViewModel
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if viewModel.isSearchIndexing {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 34, weight: .regular))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Text(viewModel.isSearchIndexing ? "インデックスを更新しています" : "一致するページがありません")
+                .font(.headline)
+
+            Text(viewModel.searchIndexStatus)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 24)
     }
 }
 
@@ -386,5 +570,15 @@ private struct EmptyLibraryView: View {
         }
 
         return "空のフォルダ"
+    }
+}
+
+private extension View {
+    func dismissPDFSearchFocus(_ isFocused: FocusState<Bool>.Binding) -> some View {
+        simultaneousGesture(
+            TapGesture().onEnded {
+                isFocused.wrappedValue = false
+            }
+        )
     }
 }

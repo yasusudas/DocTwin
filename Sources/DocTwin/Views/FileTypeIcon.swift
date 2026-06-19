@@ -81,16 +81,29 @@ private enum IconImageStore {
     }
 
     private static func loadOriginalImage(named name: String) -> NSImage? {
-        let resourceURL = Bundle.main.url(forResource: name, withExtension: "png")
-            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-                .appendingPathComponent("Resources", isDirectory: true)
-                .appendingPathComponent("\(name).png")
+        let projectResourcesURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("\(name).png")
 
-        guard let image = NSImage(contentsOf: resourceURL) else {
-            return nil
+        let candidateURLs = [
+            Bundle.main.url(forResource: name, withExtension: "png"),
+            Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/\(name).png"),
+            projectResourcesURL,
+        ]
+
+        for resourceURL in candidateURLs.compactMap({ $0 }) {
+            guard let image = NSImage(contentsOf: resourceURL) else {
+                continue
+            }
+
+            image.isTemplate = false
+            return image
         }
 
-        image.isTemplate = false
-        return image
+        return nil
     }
 }

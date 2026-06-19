@@ -20,6 +20,8 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published private(set) var statusMessage: String?
     @Published private(set) var promptCopyMessage: String?
     @Published private(set) var isGeneratingMarkdownWithCLI = false
+    @Published private(set) var cliGenerationStartedAt: Date?
+    @Published private(set) var cliGenerationProgressMessage: String?
 
     var onPageIndexChanged: ((String, Int) -> Void)?
 
@@ -117,12 +119,23 @@ final class DocumentTab: ObservableObject, Identifiable {
         let document = document
 
         isGeneratingMarkdownWithCLI = true
+        cliGenerationStartedAt = Date()
+        cliGenerationProgressMessage = "CLI生成を準備しています。"
         promptCopyMessage = "CLIでMarkdownを生成しています。完了まで時間がかかることがあります。"
         statusMessage = promptCopyMessage
 
         DispatchQueue.global(qos: .userInitiated).async { [prompt, document] in
             let result = Result {
-                try MarkdownCLIGenerator.generate(prompt: prompt, document: document)
+                try MarkdownCLIGenerator.generate(prompt: prompt, document: document) { message in
+                    DispatchQueue.main.async { [weak self] in
+                        guard self?.isGeneratingMarkdownWithCLI == true else {
+                            return
+                        }
+
+                        self?.cliGenerationProgressMessage = message
+                        self?.statusMessage = message
+                    }
+                }
             }
 
             DispatchQueue.main.async { [weak self] in
@@ -131,6 +144,8 @@ final class DocumentTab: ObservableObject, Identifiable {
                 }
 
                 self.isGeneratingMarkdownWithCLI = false
+                self.cliGenerationStartedAt = nil
+                self.cliGenerationProgressMessage = nil
 
                 switch result {
                 case .success(let generationResult):

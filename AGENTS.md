@@ -6,16 +6,16 @@
 このプロジェクトは、作業記憶を LLMwiki Vault に残す。
 このファイルの通常ルールを優先しつつ、必要に応じて次を読む。
 
-- 共通ルール: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/_shared/AI_SHARED_RULES.md`
-- ワークフロー: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/_shared/WORKFLOWS.md`
-- preferences: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/preferences`
-- mistakes index: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/mistakes/index.md`
-- global mistakes: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/mistakes/global.md`
-- プロジェクトノート: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/projects/DocTwin.md`
-- プロジェクト別 mistakes: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/mistakes/DocTwin.md`
-- daily: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/daily`
-- knowledge: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/knowledge`
-- decisions: `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/decisions`
+- 共通ルール: `$LLMWIKI_ROOT/_shared/AI_SHARED_RULES.md`
+- ワークフロー: `$LLMWIKI_ROOT/_shared/WORKFLOWS.md`
+- preferences: `$LLMWIKI_ROOT/preferences`
+- mistakes index: `$LLMWIKI_ROOT/coding/mistakes/index.md`
+- global mistakes: `$LLMWIKI_ROOT/coding/mistakes/global.md`
+- プロジェクトノート: `$LLMWIKI_ROOT/coding/projects/DocTwin.md`
+- プロジェクト別 mistakes: `$LLMWIKI_ROOT/coding/mistakes/DocTwin.md`
+- daily: `$LLMWIKI_ROOT/coding/daily`
+- knowledge: `$LLMWIKI_ROOT/coding/knowledge`
+- decisions: `$LLMWIKI_ROOT/coding/decisions`
 
 作業開始時:
 
@@ -27,11 +27,11 @@
 
 作業終了時:
 
-1. DocTwin の進捗は、ユーザーが明示的に不要と言わない限り、小変更・不具合修正も毎回 LLMwiki の `daily/sessions/` にセッションログを書く。
-2. `daily/YYYY-MM-DD.md` に要約と session link を追記する。
+1. DocTwin の進捗は、ユーザーが明示的に不要と言わない限り、小変更・不具合修正も毎回 LLMwiki の `coding/daily/sessions/` にセッションログを書く。
+2. `coding/daily/YYYY-MM-DD.md` に要約と session link を追記する。
 3. 記録後は、チャットでユーザーに LLMwiki へ記録したことを明示的に伝える。
-4. 再利用できる実用知識は `knowledge/`、設計判断は `decisions/`、プロジェクト状態は `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/projects/DocTwin.md` に残す。
-5. 再発防止すべき AI のミスは `/Users/yasusu/Library/Mobile Documents/iCloud~md~obsidian/Documents/LLMwiki/mistakes/DocTwin.md` に `NG Action / Correct Action / Trigger` で残す。
+4. 再利用できる実用知識は `coding/knowledge/`、設計判断は `coding/decisions/`、プロジェクト状態は `$LLMWIKI_ROOT/coding/projects/DocTwin.md` に残す。
+5. 再発防止すべき AI のミスは `$LLMWIKI_ROOT/coding/mistakes/DocTwin.md` に `NG Action / Correct Action / Trigger` で残す。
 
 対象プロジェクト名: DocTwin
 <!-- LLMWIKI:END -->

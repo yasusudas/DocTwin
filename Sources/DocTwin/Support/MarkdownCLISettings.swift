@@ -3,6 +3,7 @@ import Foundation
 enum MarkdownCLIProvider: String, CaseIterable, Identifiable {
     case codex
     case claude
+    case gemini
     case custom
 
     var id: String { rawValue }
@@ -13,6 +14,8 @@ enum MarkdownCLIProvider: String, CaseIterable, Identifiable {
             return "Codex CLI"
         case .claude:
             return "Claude Code CLI"
+        case .gemini:
+            return "Gemini CLI"
         case .custom:
             return "カスタムCLI"
         }
@@ -24,6 +27,8 @@ enum MarkdownCLIProvider: String, CaseIterable, Identifiable {
             return #"codex exec --skip-git-repo-check "$(cat "$DOCTWIN_PROMPT_FILE")""#
         case .claude:
             return #"claude -p "$(cat "$DOCTWIN_PROMPT_FILE")""#
+        case .gemini:
+            return #"gemini --skip-trust --approval-mode auto_edit --output-format text -p "$(cat "$DOCTWIN_PROMPT_FILE")""#
         case .custom:
             return ""
         }

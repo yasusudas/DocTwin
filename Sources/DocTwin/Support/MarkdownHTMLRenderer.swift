@@ -208,6 +208,32 @@ enum MarkdownHTMLRenderer {
                 .replaceAll("'", '&#039;');
             }
 
+            function maskCodeFences(source) {
+              const masks = [];
+
+              const masked = (source || '').replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, block => {
+                const id = 'DOC_TWIN_CODE_' + masks.length + '_MASK';
+                masks.push({ id, block });
+                return id;
+              });
+
+              return { masked, masks };
+            }
+
+            function unmaskCodeFences(source, masks) {
+              let output = source;
+
+              for (const item of masks) {
+                output = output.split(item.id).join(item.block);
+              }
+
+              return output;
+            }
+
+            function protectBold(source) {
+              return source.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+            }
+
             function protectLooseLatexBlocks(source, addMath) {
               const lines = source.replace(/\r\n?/g, '\n').split('\n');
               const output = [];
@@ -309,8 +335,11 @@ enum MarkdownHTMLRenderer {
 
               if (window.marked) {
                 marked.setOptions({ gfm: true, breaks: false });
-                const mathProtected = protectMath(payload.source || '');
-                const rawHTML = marked.parse(mathProtected.source);
+                const codeMasked = maskCodeFences(payload.source || '');
+                const mathProtected = protectMath(codeMasked.masked);
+                const boldProtected = protectBold(mathProtected.source);
+                const markdownSource = unmaskCodeFences(boldProtected, codeMasked.masks);
+                const rawHTML = marked.parse(markdownSource);
                 const restoredHTML = restoreMath(rawHTML, mathProtected.tokens);
                 content.innerHTML = window.DOMPurify ? DOMPurify.sanitize(restoredHTML) : restoredHTML;
               } else {

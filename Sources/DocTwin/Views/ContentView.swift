@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,8 +54,10 @@ struct ContentView: View {
                     .environmentObject(viewModel)
             }
         }
-        .onAppear {
-            viewModel.showLibraryOnLaunch()
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .background || newPhase == .inactive {
+                viewModel.saveSessionState()
+            }
         }
     }
 
@@ -69,6 +72,7 @@ struct ContentView: View {
 
 private struct StatusBar: View {
     @EnvironmentObject private var viewModel: AppViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         HStack(spacing: 12) {
@@ -80,6 +84,15 @@ private struct StatusBar: View {
                     .lineLimit(1)
             }
 
+            if viewModel.isSearchIndexing {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.68)
+            }
+
+            Text(viewModel.searchIndexStatus)
+                .lineLimit(1)
+
             Spacer()
 
             if let libraryURL = viewModel.libraryURL {
@@ -90,7 +103,7 @@ private struct StatusBar: View {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 18)
         .frame(height: 28)
         .background(.bar)
     }
